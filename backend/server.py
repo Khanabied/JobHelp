@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 # Import our new modules
 from document_generator import DocumentGenerator, generate_all_documents
 from progress_tracker import progress_tracker, get_analysis_steps
+from admin_analytics import AdminAnalytics, EventTracker, AdminDashboardResponse
 
 # Load environment variables
 load_dotenv()
