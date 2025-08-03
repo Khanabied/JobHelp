@@ -97,6 +97,11 @@ export const analysisService = {
     return response.data;
   },
 
+  async generateBasicResume(jobData) {
+    const response = await api.post('/api/agents/basic-resume', jobData);
+    return response.data;
+  },
+
   async getAnalysisResults(analysisId) {
     const response = await api.get(`/api/analysis/results/${analysisId}`);
     return response.data;
@@ -113,6 +118,47 @@ export const analysisService = {
   }
 };
 
+// Document service
+export const documentService = {
+  async generateDocuments(analysisId) {
+    const response = await api.post('/api/documents/generate', { analysis_id: analysisId });
+    return response.data;
+  },
+
+  async listUserDocuments() {
+    const response = await api.get('/api/documents/list');
+    return response.data;
+  },
+
+  async downloadDocument(documentId, fileType) {
+    const response = await api.get(`/api/documents/download/${documentId}/${fileType}`, {
+      responseType: 'blob'
+    });
+    return response.data;
+  }
+};
+
+// Admin service
+export const adminService = {
+  async getDashboard(periodDays = 30) {
+    const response = await api.get(`/api/admin/dashboard?period_days=${periodDays}`);
+    return response.data;
+  },
+
+  async getUsers(page = 1, limit = 50) {
+    const response = await api.get(`/api/admin/users?page=${page}&limit=${limit}`);
+    return response.data;
+  },
+
+  async getEvents(eventType = null, periodDays = 7) {
+    const params = new URLSearchParams({ period_days: periodDays });
+    if (eventType) params.append('event_type', eventType);
+    
+    const response = await api.get(`/api/admin/analytics/events?${params}`);
+    return response.data;
+  }
+};
+
 // General API service
 export const apiService = {
   async get(endpoint) {
@@ -122,6 +168,16 @@ export const apiService = {
 
   async post(endpoint, data) {
     const response = await api.post(endpoint, data);
+    return response.data;
+  },
+
+  async put(endpoint, data) {
+    const response = await api.put(endpoint, data);
+    return response.data;
+  },
+
+  async delete(endpoint) {
+    const response = await api.delete(endpoint);
     return response.data;
   }
 };
