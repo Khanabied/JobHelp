@@ -232,6 +232,13 @@ async def register(user_data: UserCreate):
     
     await database.users.insert_one(new_user)
     
+    # Track registration event
+    if event_tracker:
+        await event_tracker.track_event(user_id, "user_registered", {
+            "email": user_data.email,
+            "full_name": user_data.full_name
+        })
+    
     # Create JWT token
     token = create_jwt_token({"user_id": user_id, "email": user_data.email})
     
