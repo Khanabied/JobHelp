@@ -259,6 +259,28 @@ async def cleanup_file(
     
     return {"message": "File cleaned up successfully"}
 
+@app.get("/api/test/gemini")
+async def test_gemini_connection():
+    """Test endpoint for Gemini API connection"""
+    try:
+        from crew_integration import crew_integration
+        result = await crew_integration.test_gemini()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gemini test failed: {str(e)}")
+
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "message": "Resume Optimization Platform API is running",
+        "services": {
+            "database": "connected" if database else "disconnected",
+            "gemini": "configured" if os.getenv("GEMINI_API_KEY") else "not configured"
+        }
+    }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
