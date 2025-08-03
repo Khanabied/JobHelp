@@ -75,6 +75,16 @@ export const analysisService = {
   async analyzeJob(jobData) {
     const response = await api.post('/api/analyze/job', jobData);
     return response.data;
+  },
+
+  async getAnalysisResults(analysisId) {
+    const response = await api.get(`/api/analysis/results/${analysisId}`);
+    return response.data;
+  },
+
+  async downloadFile(analysisId, fileType) {
+    const response = await api.get(`/api/analysis/download/${analysisId}/${fileType}`);
+    return response.data;
   }
 };
 
