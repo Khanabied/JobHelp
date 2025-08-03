@@ -8,7 +8,7 @@ import JobDescriptionForm from './JobDescriptionForm';
 import LoadingSpinner from './LoadingSpinner';
 
 // Import services
-import { fileService, analysisService } from '../services/api';
+import { fileService, analysisService, apiService } from '../services/api';
 
 const Dashboard = ({ user, onLogout }) => {
   const [currentStep, setCurrentStep] = useState(1);
