@@ -364,13 +364,16 @@ async def download_analysis_file(
         if not analysis:
             raise HTTPException(status_code=404, detail="Analysis not found")
         
-        # Map file types to paths
+        # Map file types to paths including new agent outputs
         file_mapping = {
             "optimized_resume": "/app/output/optimized_resume.md",
             "final_report": "/app/output/final_report.md",
             "job_analysis": "/app/output/job_analysis.json",
             "resume_optimization": "/app/output/resume_optimization.json",
-            "company_research": "/app/output/company_research.json"
+            "company_research": "/app/output/company_research.json",
+            "cover_letter": "/app/output/cover_letter.json",
+            "linkedin_optimization": "/app/output/linkedin_optimization.json",
+            "interview_preparation": "/app/output/interview_preparation.json"
         }
         
         if file_type not in file_mapping:
