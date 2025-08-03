@@ -1,6 +1,7 @@
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional, List
 import os
@@ -13,6 +14,10 @@ import tempfile
 import shutil
 from pathlib import Path
 from dotenv import load_dotenv
+
+# Import our new modules
+from document_generator import DocumentGenerator, generate_all_documents
+from progress_tracker import progress_tracker, get_analysis_steps
 
 # Load environment variables
 load_dotenv()
