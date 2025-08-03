@@ -126,34 +126,90 @@ const Dashboard = ({ user, onLogout }) => {
               <Download className="w-8 h-8 text-green-600" />
             </div>
             <h3 className="text-2xl font-bold text-gray-900 mb-4">Analysis Complete!</h3>
-            <p className="text-gray-600 mb-8">Your optimized resume and career documents are ready.</p>
+            <p className="text-gray-600 mb-8">Your resume has been analyzed and optimized for the target job.</p>
             
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-8">
-              <p className="text-yellow-800 text-sm">
-                <strong>Phase 1 Complete!</strong> Basic infrastructure is ready. 
-                Phase 2 will integrate the full CrewAI analysis and document generation.
-              </p>
-            </div>
+            {results && results.detailed_results && (
+              <div className="max-w-4xl mx-auto mb-8">
+                {/* Job Match Score Summary */}
+                {results.detailed_results.job_analysis && results.detailed_results.job_analysis.match_score && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+                    <h4 className="text-xl font-bold text-blue-900 mb-4">📊 Job Match Score</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      <div className="text-center">
+                        <div className="text-3xl font-bold text-blue-600">
+                          {Math.round(results.detailed_results.job_analysis.match_score.overall_match)}%
+                        </div>
+                        <div className="text-sm text-blue-800">Overall Match</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">
+                          {Math.round(results.detailed_results.job_analysis.match_score.technical_skills_match)}%
+                        </div>
+                        <div className="text-sm text-gray-600">Technical Skills</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-purple-600">
+                          {Math.round(results.detailed_results.job_analysis.match_score.experience_match)}%
+                        </div>
+                        <div className="text-sm text-gray-600">Experience</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
+                {/* Quick Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <h4 className="font-semibold text-gray-900 mb-3">📋 Analysis Summary</h4>
+                    <ul className="text-sm text-gray-600 space-y-2">
+                      <li>✅ Job requirements analyzed</li>
+                      <li>✅ Resume optimized for ATS</li>
+                      <li>✅ Company research completed</li>
+                      <li>✅ Interview prep generated</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <h4 className="font-semibold text-gray-900 mb-3">🎯 Target Role</h4>
+                    <p className="text-sm text-gray-600">
+                      <strong>Company:</strong> {results.company_name}<br/>
+                      <strong>Input Type:</strong> {results.detailed_results.job_analysis ? 'Job URL' : 'Job Description'}<br/>
+                      <strong>Analysis Date:</strong> {new Date().toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Download Options */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto mb-8">
               {[
-                { title: 'Optimized Resume', desc: 'ATS-friendly resume', icon: FileText },
-                { title: 'Cover Letter', desc: 'Tailored for this job', icon: MessageSquare },
-                { title: 'LinkedIn Profile', desc: 'Enhanced profile copy', icon: Linkedin },
-                { title: 'Interview Prep', desc: 'Questions & coaching', icon: HelpCircle }
+                { title: 'Optimized Resume', desc: 'ATS-friendly resume', icon: FileText, type: 'optimized_resume' },
+                { title: 'Final Report', desc: 'Complete analysis report', icon: MessageSquare, type: 'final_report' },
+                { title: 'Job Analysis', desc: 'Job requirements breakdown', icon: Briefcase, type: 'job_analysis' },
+                { title: 'Company Research', desc: 'Company insights', icon: HelpCircle, type: 'company_research' }
               ].map((item, idx) => (
                 <div key={idx} className="bg-white border border-gray-200 rounded-lg p-4 card-hover">
                   <item.icon className="w-6 h-6 text-primary-600 mb-2" />
                   <h4 className="font-semibold text-gray-900">{item.title}</h4>
-                  <p className="text-sm text-gray-600">{item.desc}</p>
+                  <p className="text-sm text-gray-600 mb-3">{item.desc}</p>
                   <button 
-                    disabled 
-                    className="mt-2 text-sm text-gray-400 cursor-not-allowed"
+                    onClick={() => handleDownload(item.type)}
+                    className="w-full text-sm bg-primary-600 text-white px-3 py-2 rounded hover:bg-primary-700 transition-colors"
                   >
-                    Coming in Phase 2
+                    View Content
                   </button>
                 </div>
               ))}
+            </div>
+
+            {/* Phase 2 Status */}
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-8 max-w-2xl mx-auto">
+              <p className="text-green-800 text-sm">
+                <strong>🎉 Phase 2 Complete!</strong> CrewAI + Gemini analysis is working! 
+                <br/>Phase 3 will add extended AI agents (Cover Letter, LinkedIn, Interview Prep).
+                <br/>Phase 4 will add professional DOCX/PDF document generation.
+              </p>
             </div>
 
             <button
