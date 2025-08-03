@@ -43,13 +43,19 @@ JWT_ALGORITHM = "HS256"
 # MongoDB connection
 mongodb_client = None
 database = None
+admin_analytics = None
+event_tracker = None
 
 @app.on_event("startup")
 async def startup_event():
-    global mongodb_client, database
+    global mongodb_client, database, admin_analytics, event_tracker
     mongodb_url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
     mongodb_client = AsyncIOMotorClient(mongodb_url)
-    database = mongodb_client.resume_platform
+    database = mongodb_client.jobsasa_platform
+    
+    # Initialize analytics services
+    admin_analytics = AdminAnalytics(database)
+    event_tracker = EventTracker(database)
 
 @app.on_event("shutdown")
 async def shutdown_event():
