@@ -223,15 +223,180 @@ async def analyze_job(
     if not request.job_url and not request.job_description:
         raise HTTPException(status_code=400, detail="Either job_url or job_description must be provided")
     
-    # For now, return a placeholder response
-    # This will be implemented in Phase 2 with CrewAI integration
-    return {
-        "message": "Job analysis endpoint ready",
-        "job_url": request.job_url,
-        "company_name": request.company_name,
-        "has_description": bool(request.job_description),
-        "status": "pending_implementation"
-    }
+    try:
+        # Find the user's most recent uploaded file
+        file_record = await database.uploaded_files.find_one({
+            "user_id": current_user.id,
+            "processed": False
+        }, sort=[("upload_time", -1)])
+        
+        if not file_record:
+            raise HTTPException(status_code=400, detail="No resume file found. Please upload a resume first.")
+        
+        # Import and run CrewAI analysis
+        from web_crew import WebOptimizedResumeCrew
+        
+        # Determine job input type and content
+        is_job_url = bool(request.job_url)
+        job_input = request.job_url if is_job_url else request.job_description
+        
+        # Create and run the crew analysis
+        crew_system = WebOptimizedResumeCrew(
+            resume_file_path=file_record["file_path"],
+            job_input=job_input,
+            company_name=request.company_name,
+            is_job_url=is_job_url
+        )
+        
+        # Run the analysis (this will take some time)
+        print(f"🔄 Starting CrewAI analysis for user {current_user.email}")
+        result = crew_system.run_analysis()
+        
+        if result["status"] == "success":
+            # Mark file as processed
+            await database.uploaded_files.update_one(
+                {"_id": file_record["_id"]},
+                {"$set": {"processed": True, "processed_at": datetime.utcnow()}}
+            )
+            
+            # Store analysis result in database
+            analysis_record = {
+                "_id": str(uuid.uuid4()),
+                "user_id": current_user.id,
+                "file_id": file_record["_id"],
+                "job_input": job_input,
+                "company_name": request.company_name,
+                "is_job_url": is_job_url,
+                "analysis_result": result,
+                "created_at": datetime.utcnow()
+            }
+            
+            await database.analysis_results.insert_one(analysis_record)
+            
+            print(f"✅ CrewAI analysis completed for user {current_user.email}")
+            
+            return {
+                "status": "success",
+                "message": "Resume analysis completed successfully",
+                "analysis_id": analysis_record["_id"],
+                "job_input": job_input,
+                "company_name": request.company_name,
+                "result": result
+            }
+        else:
+            print(f"❌ CrewAI analysis failed for user {current_user.email}: {result['message']}")
+            raise HTTPException(status_code=500, detail=result["message"])
+            
+    except Exception as e:
+        print(f"❌ Analysis error for user {current_user.email}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+@app.get("/api/analysis/results/{analysis_id}")
+async def get_analysis_results(
+    analysis_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get detailed analysis results"""
+    try:
+        # Find analysis record
+        analysis = await database.analysis_results.find_one({
+            "_id": analysis_id,
+            "user_id": current_user.id
+        })
+        
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        # Read output files
+        results = {}
+        output_files = {
+            "job_analysis": "/app/output/job_analysis.json",
+            "resume_optimization": "/app/output/resume_optimization.json", 
+            "company_research": "/app/output/company_research.json",
+            "optimized_resume": "/app/output/optimized_resume.md",
+            "final_report": "/app/output/final_report.md"
+        }
+        
+        for key, file_path in output_files.items():
+            if os.path.exists(file_path):
+                try:
+                    with open(file_path, 'r') as f:
+                        content = f.read()
+                        if file_path.endswith('.json'):
+                            import json
+                            results[key] = json.loads(content)
+                        else:
+                            results[key] = content
+                except Exception as e:
+                    print(f"Error reading {file_path}: {e}")
+                    results[key] = None
+            else:
+                results[key] = None
+        
+        return {
+            "analysis_id": analysis_id,
+            "job_input": analysis["job_input"],
+            "company_name": analysis["company_name"],
+            "is_job_url": analysis["is_job_url"],
+            "created_at": analysis["created_at"],
+            "results": results
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get results: {str(e)}")
+
+@app.get("/api/analysis/download/{analysis_id}/{file_type}")
+async def download_analysis_file(
+    analysis_id: str,
+    file_type: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Download analysis files (resume, report, etc.)"""
+    try:
+        # Verify user owns this analysis
+        analysis = await database.analysis_results.find_one({
+            "_id": analysis_id,
+            "user_id": current_user.id
+        })
+        
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        # Map file types to paths
+        file_mapping = {
+            "optimized_resume": "/app/output/optimized_resume.md",
+            "final_report": "/app/output/final_report.md",
+            "job_analysis": "/app/output/job_analysis.json",
+            "resume_optimization": "/app/output/resume_optimization.json",
+            "company_research": "/app/output/company_research.json"
+        }
+        
+        if file_type not in file_mapping:
+            raise HTTPException(status_code=400, detail="Invalid file type")
+        
+        file_path = file_mapping[file_type]
+        
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # For now, return file content as JSON
+        # In Phase 4, we'll add proper document generation (DOCX/PDF)
+        with open(file_path, 'r') as f:
+            content = f.read()
+        
+        return {
+            "file_type": file_type,
+            "filename": f"{file_type}_{analysis_id}",
+            "content": content,
+            "message": "File content retrieved successfully. Professional DOCX/PDF generation coming in Phase 4."
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
 
 @app.delete("/api/cleanup/{file_id}")
 async def cleanup_file(
