@@ -42,23 +42,36 @@ const Dashboard = ({ user, onLogout }) => {
     setIsProcessing(true);
     
     try {
-      // This will be implemented in Phase 2 with CrewAI integration
-      const response = await analysisService.analyzeJob(data);
-      console.log('Job analysis response:', response);
+      console.log('🔄 Starting job analysis with data:', data);
       
-      // Simulate processing time for now
-      setTimeout(() => {
+      // Call the real analysis endpoint
+      const response = await analysisService.analyzeJob(data);
+      console.log('✅ Job analysis response:', response);
+      
+      if (response.status === 'success') {
+        // Wait a moment for processing to complete
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Fetch detailed results
+        const detailedResults = await analysisService.getAnalysisResults(response.analysis_id);
+        console.log('📊 Detailed results:', detailedResults);
+        
         setIsProcessing(false);
         setCurrentStep(4);
         setResults({
-          message: 'Analysis complete! Ready for Phase 2 implementation.',
-          status: 'pending_crewai_integration'
+          analysis_id: response.analysis_id,
+          job_input: response.job_input,
+          company_name: response.company_name,
+          detailed_results: detailedResults.results,
+          status: 'completed'
         });
-      }, 3000);
+      } else {
+        throw new Error(response.message || 'Analysis failed');
+      }
       
     } catch (error) {
-      toast.error('Analysis failed. Please try again.');
-      console.error('Analysis error:', error);
+      console.error('❌ Analysis error:', error);
+      toast.error(`Analysis failed: ${error.response?.data?.detail || error.message}`);
       setIsProcessing(false);
       setCurrentStep(2);
     }
