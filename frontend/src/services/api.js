@@ -77,8 +77,33 @@ export const analysisService = {
     return response.data;
   },
 
+  async analyzeJobExtended(jobData) {
+    const response = await api.post('/api/analyze/extended', jobData);
+    return response.data;
+  },
+
+  async generateCoverLetter(jobData) {
+    const response = await api.post('/api/agents/cover-letter', jobData);
+    return response.data;
+  },
+
+  async optimizeLinkedIn(jobData) {
+    const response = await api.post('/api/agents/linkedin', jobData);
+    return response.data;
+  },
+
+  async prepareInterview(jobData) {
+    const response = await api.post('/api/agents/interview', jobData);
+    return response.data;
+  },
+
   async getAnalysisResults(analysisId) {
     const response = await api.get(`/api/analysis/results/${analysisId}`);
+    return response.data;
+  },
+
+  async getExtendedAnalysisResults(analysisId) {
+    const response = await api.get(`/api/analysis/extended-results/${analysisId}`);
     return response.data;
   },
 
