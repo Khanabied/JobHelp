@@ -316,12 +316,16 @@ class WebOptimizedResumeCrew:
     
     def create_company_researcher(self) -> Agent:
         """Create company researcher agent with Gemini LLM"""
+        tools = []
+        if SerperDevTool:
+            tools = [SerperDevTool()]
+            
         return Agent(
             role=self.agents_config['company_researcher']['role'],
             goal=self.agents_config['company_researcher']['goal'],
             backstory=self.agents_config['company_researcher']['backstory'],
             verbose=True,
-            tools=[SerperDevTool()],
+            tools=tools,
             llm=self.gemini_llm,
             knowledge_sources=[self.resume_pdf]
         )
