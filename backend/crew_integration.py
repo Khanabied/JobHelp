@@ -23,8 +23,12 @@ class WebCrewIntegration:
     def _initialize_gemini(self):
         """Initialize Gemini LLM for CrewAI"""
         try:
-            self.gemini_llm = get_gemini_llm()
-            print("✅ Gemini LLM initialized successfully")
+            # Create Gemini LLM instance for CrewAI
+            self.gemini_llm = LLM(
+                model="gemini/gemini-2.0-flash-exp",
+                api_key=os.getenv("GEMINI_API_KEY")
+            )
+            print("✅ Gemini LLM initialized successfully for CrewAI")
         except Exception as e:
             print(f"❌ Failed to initialize Gemini LLM: {e}")
             self.gemini_llm = None
