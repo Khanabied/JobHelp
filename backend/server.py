@@ -111,6 +111,72 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     except jwt.JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+async def run_extended_analysis_with_progress(session_id: str, file_record: dict, request: JobAnalysisRequest, current_user: User):
+    """Run extended analysis with progress tracking"""
+    try:
+        # Import and run extended CrewAI analysis
+        from extended_crew import ExtendedCareerOptimizationCrew
+        
+        # Determine job input type and content
+        is_job_url = bool(request.job_url)
+        job_input = request.job_url if is_job_url else request.job_description
+        
+        # Create and run the extended crew analysis
+        extended_crew = ExtendedCareerOptimizationCrew(
+            resume_file_path=file_record["file_path"],
+            job_input=job_input,
+            company_name=request.company_name,
+            is_job_url=is_job_url
+        )
+        
+        # Run the extended analysis (this will take some time)
+        print(f"🔄 Starting extended CrewAI analysis for user {current_user.email}")
+        result = extended_crew.run_extended_analysis()
+        
+        if result["status"] == "success":
+            # Mark file as processed
+            await database.uploaded_files.update_one(
+                {"_id": file_record["_id"]},
+                {"$set": {"processed": True, "processed_at": datetime.utcnow()}}
+            )
+            
+            # Store extended analysis result in database
+            analysis_record = {
+                "_id": str(uuid.uuid4()),
+                "user_id": current_user.id,
+                "file_id": file_record["_id"],
+                "job_input": job_input,
+                "company_name": request.company_name,
+                "is_job_url": is_job_url,
+                "analysis_type": "extended",
+                "analysis_result": result,
+                "created_at": datetime.utcnow()
+            }
+            
+            await database.analysis_results.insert_one(analysis_record)
+            
+            # Update progress to completed
+            progress_tracker.complete_session(session_id, {
+                "status": "success",
+                "message": "Extended resume analysis completed successfully",
+                "analysis_id": analysis_record["_id"],
+                "job_input": job_input,
+                "company_name": request.company_name,
+                "analysis_type": "extended",
+                "result": result
+            })
+            
+            print(f"✅ Extended CrewAI analysis completed for user {current_user.email}")
+        else:
+            # Update progress to failed
+            progress_tracker.fail_session(session_id, result["message"])
+            print(f"❌ Extended CrewAI analysis failed for user {current_user.email}: {result['message']}")
+            
+    except Exception as e:
+        # Update progress to failed
+        progress_tracker.fail_session(session_id, f"Extended analysis failed: {str(e)}")
+        print(f"❌ Extended analysis error for user {current_user.email}: {str(e)}")
+
 # Routes
 @app.get("/")
 async def root():
