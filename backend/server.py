@@ -650,6 +650,223 @@ async def prepare_interview(
         print(f"❌ Interview preparation error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Interview preparation failed: {str(e)}")
 
+@app.post("/api/agents/basic-resume")
+async def optimize_resume_basic(
+    request: JobAnalysisRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Generate basic optimized resume only"""
+    if not request.job_url and not request.job_description:
+        raise HTTPException(status_code=400, detail="Either job_url or job_description must be provided")
+    
+    try:
+        file_record = await database.uploaded_files.find_one({
+            "user_id": current_user.id
+        }, sort=[("upload_time", -1)])
+        
+        if not file_record:
+            raise HTTPException(status_code=400, detail="No resume file found. Please upload a resume first.")
+        
+        # Track event
+        if event_tracker:
+            await event_tracker.track_event(current_user.id, "basic_resume_generation", {
+                "company_name": request.company_name,
+                "has_job_url": bool(request.job_url)
+            })
+        
+        from web_crew import WebOptimizedResumeCrew
+        
+        is_job_url = bool(request.job_url)
+        job_input = request.job_url if is_job_url else request.job_description
+        
+        resume_crew = WebOptimizedResumeCrew(
+            resume_file_path=file_record["file_path"],
+            job_input=job_input,
+            company_name=request.company_name,
+            is_job_url=is_job_url
+        )
+        
+        print(f"🔄 Starting basic resume optimization for user {current_user.email}")
+        result = resume_crew.run_analysis()
+        
+        if result["status"] == "success":
+            return {
+                "status": "success",
+                "message": "Basic resume optimization completed successfully",
+                "agent_type": "basic_resume",
+                "result": result
+            }
+        else:
+            raise HTTPException(status_code=500, detail=result["message"])
+            
+    except Exception as e:
+        print(f"❌ Basic resume optimization error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Basic resume optimization failed: {str(e)}")
+
+# Admin Dashboard Endpoints
+@app.get("/api/admin/dashboard")
+async def get_admin_dashboard(
+    period_days: int = 30,
+    current_user: User = Depends(get_current_user)
+):
+    """Get comprehensive admin dashboard metrics"""
+    # For now, simple admin check - in production, implement proper admin role
+    if not current_user.email.endswith("@admin.jobsasa.com") and current_user.email != "admin@example.com":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        if admin_analytics:
+            dashboard_data = await admin_analytics.get_comprehensive_dashboard(period_days)
+            return dashboard_data
+        else:
+            raise HTTPException(status_code=500, detail="Analytics service not available")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get admin dashboard: {str(e)}")
+
+@app.get("/api/admin/users")
+async def get_admin_users(
+    page: int = 1,
+    limit: int = 50,
+    current_user: User = Depends(get_current_user)
+):
+    """Get user list for admin"""
+    # Simple admin check
+    if not current_user.email.endswith("@admin.jobsasa.com") and current_user.email != "admin@example.com":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        skip = (page - 1) * limit
+        
+        # Get users with pagination
+        cursor = database.users.find(
+            {},
+            {"password": 0}  # Exclude password field
+        ).sort("created_at", -1).skip(skip).limit(limit)
+        
+        users = []
+        async for user in cursor:
+            # Get user's analysis count
+            analysis_count = await database.analysis_results.count_documents({
+                "user_id": user["_id"]
+            })
+            
+            users.append({
+                "id": user["_id"],
+                "email": user["email"],
+                "full_name": user["full_name"],
+                "created_at": user["created_at"],
+                "analysis_count": analysis_count
+            })
+        
+        # Get total count for pagination
+        total_count = await database.users.count_documents({})
+        
+        return {
+            "users": users,
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total_count,
+                "pages": (total_count + limit - 1) // limit
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get users: {str(e)}")
+
+@app.get("/api/admin/analytics/events")
+async def get_admin_events(
+    event_type: Optional[str] = None,
+    period_days: int = 7,
+    current_user: User = Depends(get_current_user)
+):
+    """Get user events for admin analytics"""
+    # Simple admin check
+    if not current_user.email.endswith("@admin.jobsasa.com") and current_user.email != "admin@example.com":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        start_date = datetime.utcnow() - timedelta(days=period_days)
+        
+        # Build query
+        query = {"timestamp": {"$gte": start_date}}
+        if event_type:
+            query["event_type"] = event_type
+        
+        # Get events
+        cursor = database.user_events.find(query).sort("timestamp", -1).limit(1000)
+        
+        events = []
+        async for event in cursor:
+            events.append({
+                "user_id": event["user_id"],
+                "event_type": event["event_type"],
+                "event_data": event.get("event_data", {}),
+                "timestamp": event["timestamp"]
+            })
+        
+        return {
+            "events": events,
+            "period_days": period_days,
+            "event_type_filter": event_type
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get events: {str(e)}")
+
+# Enhanced progress tracking with session completion
+@app.post("/api/analyze/extended")
+async def analyze_extended(
+    request: JobAnalysisRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user)
+):
+    """Run complete analysis with all 8 agents including new ones"""
+    # Validate input
+    if not request.job_url and not request.job_description:
+        raise HTTPException(status_code=400, detail="Either job_url or job_description must be provided")
+    
+    try:
+        # Find the user's most recent uploaded file
+        file_record = await database.uploaded_files.find_one({
+            "user_id": current_user.id
+        }, sort=[("upload_time", -1)])
+        
+        if not file_record:
+            raise HTTPException(status_code=400, detail="No resume file found. Please upload a resume first.")
+        
+        # Track event
+        if event_tracker:
+            await event_tracker.track_event(current_user.id, "extended_analysis_started", {
+                "company_name": request.company_name,
+                "has_job_url": bool(request.job_url)
+            })
+        
+        # Create progress tracking session
+        session_id = str(uuid.uuid4())
+        steps = get_analysis_steps("extended")
+        progress_tracker.create_session(session_id, steps)
+        
+        # Start background analysis
+        background_tasks.add_task(
+            run_extended_analysis_with_progress,
+            session_id,
+            file_record,
+            request,
+            current_user
+        )
+        
+        return {
+            "status": "started",
+            "message": "Extended resume analysis started",
+            "session_id": session_id,
+            "progress_url": f"/api/progress/{session_id}"
+        }
+            
+    except Exception as e:
+        print(f"❌ Extended analysis error for user {current_user.email}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Extended analysis failed: {str(e)}")
+
 @app.get("/api/analysis/extended-results/{analysis_id}")
 async def get_extended_analysis_results(
     analysis_id: str,
@@ -665,6 +882,13 @@ async def get_extended_analysis_results(
         
         if not analysis:
             raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        # Track event
+        if event_tracker:
+            await event_tracker.track_event(current_user.id, "results_viewed", {
+                "analysis_id": analysis_id,
+                "analysis_type": analysis.get("analysis_type", "basic")
+            })
         
         # Read all output files including new ones
         results = {}
