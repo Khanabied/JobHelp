@@ -302,7 +302,7 @@ class WebOptimizedResumeCrew:
     def create_job_analyzer(self) -> Agent:
         """Create job analyzer agent with Gemini LLM"""
         tools = []
-        if self.is_job_url:
+        if self.is_job_url and ScrapeWebsiteTool:
             tools = [ScrapeWebsiteTool()]
         
         return Agent(
