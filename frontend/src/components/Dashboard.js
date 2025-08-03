@@ -90,6 +90,50 @@ const Dashboard = ({ user, onLogout }) => {
     }
   };
 
+  const handleDownload = async (fileType) => {
+    try {
+      if (!results?.analysis_id) {
+        toast.error('No analysis ID found');
+        return;
+      }
+
+      const response = await apiService.get(`/api/analysis/download/${results.analysis_id}/${fileType}`);
+      
+      // Create a new window/tab to display the content
+      const newWindow = window.open('', '_blank');
+      if (newWindow) {
+        newWindow.document.write(`
+          <html>
+            <head>
+              <title>${response.filename}</title>
+              <style>
+                body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+                pre { background: #f4f4f4; padding: 20px; overflow-x: auto; }
+                .json-content { white-space: pre-wrap; }
+              </style>
+            </head>
+            <body>
+              <h1>${response.file_type.replace('_', ' ').toUpperCase()}</h1>
+              <div class="json-content">${fileType.endsWith('_analysis') || fileType.endsWith('_research') ? 
+                JSON.stringify(JSON.parse(response.content), null, 2) : 
+                response.content.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+              }</div>
+              <br/>
+              <p><em>${response.message}</em></p>
+            </body>
+          </html>
+        `);
+        newWindow.document.close();
+      }
+      
+      toast.success(`${fileType} opened successfully`);
+      
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error(`Failed to download ${fileType}: ${error.response?.data?.detail || error.message}`);
+    }
+  };
+
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
