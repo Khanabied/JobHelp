@@ -428,12 +428,294 @@ async def cleanup_file(
     
     return {"message": "File cleaned up successfully"}
 
+# Extended analysis endpoints for new AI agents
+@app.post("/api/analyze/extended")
+async def analyze_extended(
+    request: JobAnalysisRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Run complete analysis with all 8 agents including new ones"""
+    # Validate input
+    if not request.job_url and not request.job_description:
+        raise HTTPException(status_code=400, detail="Either job_url or job_description must be provided")
+    
+    try:
+        # Find the user's most recent uploaded file
+        file_record = await database.uploaded_files.find_one({
+            "user_id": current_user.id,
+            "processed": False
+        }, sort=[("upload_time", -1)])
+        
+        if not file_record:
+            raise HTTPException(status_code=400, detail="No resume file found. Please upload a resume first.")
+        
+        # Import and run extended CrewAI analysis
+        from extended_crew import ExtendedCareerOptimizationCrew
+        
+        # Determine job input type and content
+        is_job_url = bool(request.job_url)
+        job_input = request.job_url if is_job_url else request.job_description
+        
+        # Create and run the extended crew analysis
+        extended_crew = ExtendedCareerOptimizationCrew(
+            resume_file_path=file_record["file_path"],
+            job_input=job_input,
+            company_name=request.company_name,
+            is_job_url=is_job_url
+        )
+        
+        # Run the extended analysis (this will take some time)
+        print(f"🔄 Starting extended CrewAI analysis for user {current_user.email}")
+        result = extended_crew.run_extended_analysis()
+        
+        if result["status"] == "success":
+            # Mark file as processed
+            await database.uploaded_files.update_one(
+                {"_id": file_record["_id"]},
+                {"$set": {"processed": True, "processed_at": datetime.utcnow()}}
+            )
+            
+            # Store extended analysis result in database
+            analysis_record = {
+                "_id": str(uuid.uuid4()),
+                "user_id": current_user.id,
+                "file_id": file_record["_id"],
+                "job_input": job_input,
+                "company_name": request.company_name,
+                "is_job_url": is_job_url,
+                "analysis_type": "extended",
+                "analysis_result": result,
+                "created_at": datetime.utcnow()
+            }
+            
+            await database.analysis_results.insert_one(analysis_record)
+            
+            print(f"✅ Extended CrewAI analysis completed for user {current_user.email}")
+            
+            return {
+                "status": "success",
+                "message": "Extended resume analysis completed successfully",
+                "analysis_id": analysis_record["_id"],
+                "job_input": job_input,
+                "company_name": request.company_name,
+                "analysis_type": "extended",
+                "result": result
+            }
+        else:
+            print(f"❌ Extended CrewAI analysis failed for user {current_user.email}: {result['message']}")
+            raise HTTPException(status_code=500, detail=result["message"])
+            
+    except Exception as e:
+        print(f"❌ Extended analysis error for user {current_user.email}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Extended analysis failed: {str(e)}")
+
+@app.post("/api/agents/cover-letter")
+async def generate_cover_letter(
+    request: JobAnalysisRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Generate cover letter independently"""
+    if not request.job_url and not request.job_description:
+        raise HTTPException(status_code=400, detail="Either job_url or job_description must be provided")
+    
+    try:
+        file_record = await database.uploaded_files.find_one({
+            "user_id": current_user.id,
+            "processed": False
+        }, sort=[("upload_time", -1)])
+        
+        if not file_record:
+            raise HTTPException(status_code=400, detail="No resume file found. Please upload a resume first.")
+        
+        from extended_crew import ExtendedCareerOptimizationCrew
+        
+        is_job_url = bool(request.job_url)
+        job_input = request.job_url if is_job_url else request.job_description
+        
+        extended_crew = ExtendedCareerOptimizationCrew(
+            resume_file_path=file_record["file_path"],
+            job_input=job_input,
+            company_name=request.company_name,
+            is_job_url=is_job_url
+        )
+        
+        print(f"🔄 Starting cover letter generation for user {current_user.email}")
+        result = extended_crew.run_individual_agent("cover_letter")
+        
+        if result["status"] == "success":
+            return {
+                "status": "success",
+                "message": "Cover letter generated successfully",
+                "agent_type": "cover_letter",
+                "result": result
+            }
+        else:
+            raise HTTPException(status_code=500, detail=result["message"])
+            
+    except Exception as e:
+        print(f"❌ Cover letter generation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Cover letter generation failed: {str(e)}")
+
+@app.post("/api/agents/linkedin")
+async def optimize_linkedin(
+    request: JobAnalysisRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Optimize LinkedIn profile independently"""
+    if not request.job_url and not request.job_description:
+        raise HTTPException(status_code=400, detail="Either job_url or job_description must be provided")
+    
+    try:
+        file_record = await database.uploaded_files.find_one({
+            "user_id": current_user.id,
+            "processed": False
+        }, sort=[("upload_time", -1)])
+        
+        if not file_record:
+            raise HTTPException(status_code=400, detail="No resume file found. Please upload a resume first.")
+        
+        from extended_crew import ExtendedCareerOptimizationCrew
+        
+        is_job_url = bool(request.job_url)
+        job_input = request.job_url if is_job_url else request.job_description
+        
+        extended_crew = ExtendedCareerOptimizationCrew(
+            resume_file_path=file_record["file_path"],
+            job_input=job_input,
+            company_name=request.company_name,
+            is_job_url=is_job_url
+        )
+        
+        print(f"🔄 Starting LinkedIn optimization for user {current_user.email}")
+        result = extended_crew.run_individual_agent("linkedin")
+        
+        if result["status"] == "success":
+            return {
+                "status": "success",
+                "message": "LinkedIn optimization completed successfully",
+                "agent_type": "linkedin",
+                "result": result
+            }
+        else:
+            raise HTTPException(status_code=500, detail=result["message"])
+            
+    except Exception as e:
+        print(f"❌ LinkedIn optimization error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"LinkedIn optimization failed: {str(e)}")
+
+@app.post("/api/agents/interview")
+async def prepare_interview(
+    request: JobAnalysisRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Generate interview preparation materials independently"""
+    if not request.job_url and not request.job_description:
+        raise HTTPException(status_code=400, detail="Either job_url or job_description must be provided")
+    
+    try:
+        file_record = await database.uploaded_files.find_one({
+            "user_id": current_user.id,
+            "processed": False
+        }, sort=[("upload_time", -1)])
+        
+        if not file_record:
+            raise HTTPException(status_code=400, detail="No resume file found. Please upload a resume first.")
+        
+        from extended_crew import ExtendedCareerOptimizationCrew
+        
+        is_job_url = bool(request.job_url)
+        job_input = request.job_url if is_job_url else request.job_description
+        
+        extended_crew = ExtendedCareerOptimizationCrew(
+            resume_file_path=file_record["file_path"],
+            job_input=job_input,
+            company_name=request.company_name,
+            is_job_url=is_job_url
+        )
+        
+        print(f"🔄 Starting interview preparation for user {current_user.email}")
+        result = extended_crew.run_individual_agent("interview")
+        
+        if result["status"] == "success":
+            return {
+                "status": "success",
+                "message": "Interview preparation completed successfully",
+                "agent_type": "interview",
+                "result": result
+            }
+        else:
+            raise HTTPException(status_code=500, detail=result["message"])
+            
+    except Exception as e:
+        print(f"❌ Interview preparation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Interview preparation failed: {str(e)}")
+
+@app.get("/api/analysis/extended-results/{analysis_id}")
+async def get_extended_analysis_results(
+    analysis_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get detailed extended analysis results including new agent outputs"""
+    try:
+        # Find analysis record
+        analysis = await database.analysis_results.find_one({
+            "_id": analysis_id,
+            "user_id": current_user.id
+        })
+        
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        # Read all output files including new ones
+        results = {}
+        output_files = {
+            "job_analysis": "/app/output/job_analysis.json",
+            "resume_optimization": "/app/output/resume_optimization.json", 
+            "company_research": "/app/output/company_research.json",
+            "cover_letter": "/app/output/cover_letter.json",
+            "linkedin_optimization": "/app/output/linkedin_optimization.json",
+            "interview_preparation": "/app/output/interview_preparation.json",
+            "optimized_resume": "/app/output/optimized_resume.md",
+            "final_report": "/app/output/final_report.md"
+        }
+        
+        for key, file_path in output_files.items():
+            if os.path.exists(file_path):
+                try:
+                    with open(file_path, 'r') as f:
+                        content = f.read()
+                        if file_path.endswith('.json'):
+                            import json
+                            results[key] = json.loads(content)
+                        else:
+                            results[key] = content
+                except Exception as e:
+                    print(f"Error reading {file_path}: {e}")
+                    results[key] = None
+            else:
+                results[key] = None
+        
+        return {
+            "analysis_id": analysis_id,
+            "job_input": analysis["job_input"],
+            "company_name": analysis["company_name"],
+            "is_job_url": analysis["is_job_url"],
+            "analysis_type": analysis.get("analysis_type", "basic"),
+            "created_at": analysis["created_at"],
+            "results": results
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get extended results: {str(e)}")
+
 @app.get("/api/test/gemini")
 async def test_gemini_connection():
     """Test endpoint for Gemini API connection"""
     try:
-        from crew_integration import crew_integration
-        result = await crew_integration.test_gemini()
+        from gemini_config import test_gemini_connection
+        result = await test_gemini_connection()
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gemini test failed: {str(e)}")
