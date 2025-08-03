@@ -311,6 +311,7 @@ async def upload_resume(
 @app.post("/api/analyze/extended")
 async def analyze_extended(
     request: JobAnalysisRequest,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user)
 ):
     """Run complete analysis with all 8 agents including new ones"""
@@ -327,65 +328,182 @@ async def analyze_extended(
         if not file_record:
             raise HTTPException(status_code=400, detail="No resume file found. Please upload a resume first.")
         
-        # Import and run extended CrewAI analysis
-        from extended_crew import ExtendedCareerOptimizationCrew
+        # Create progress tracking session
+        session_id = str(uuid.uuid4())
+        steps = get_analysis_steps("extended")
+        progress_tracker.create_session(session_id, steps)
         
-        # Determine job input type and content
-        is_job_url = bool(request.job_url)
-        job_input = request.job_url if is_job_url else request.job_description
-        
-        # Create and run the extended crew analysis
-        extended_crew = ExtendedCareerOptimizationCrew(
-            resume_file_path=file_record["file_path"],
-            job_input=job_input,
-            company_name=request.company_name,
-            is_job_url=is_job_url
+        # Start background analysis
+        background_tasks.add_task(
+            run_extended_analysis_with_progress,
+            session_id,
+            file_record,
+            request,
+            current_user
         )
         
-        # Run the extended analysis (this will take some time)
-        print(f"🔄 Starting extended CrewAI analysis for user {current_user.email}")
-        result = extended_crew.run_extended_analysis()
-        
-        if result["status"] == "success":
-            # Mark file as processed
-            await database.uploaded_files.update_one(
-                {"_id": file_record["_id"]},
-                {"$set": {"processed": True, "processed_at": datetime.utcnow()}}
-            )
-            
-            # Store extended analysis result in database
-            analysis_record = {
-                "_id": str(uuid.uuid4()),
-                "user_id": current_user.id,
-                "file_id": file_record["_id"],
-                "job_input": job_input,
-                "company_name": request.company_name,
-                "is_job_url": is_job_url,
-                "analysis_type": "extended",
-                "analysis_result": result,
-                "created_at": datetime.utcnow()
-            }
-            
-            await database.analysis_results.insert_one(analysis_record)
-            
-            print(f"✅ Extended CrewAI analysis completed for user {current_user.email}")
-            
-            return {
-                "status": "success",
-                "message": "Extended resume analysis completed successfully",
-                "analysis_id": analysis_record["_id"],
-                "job_input": job_input,
-                "company_name": request.company_name,
-                "analysis_type": "extended",
-                "result": result
-            }
-        else:
-            print(f"❌ Extended CrewAI analysis failed for user {current_user.email}: {result['message']}")
-            raise HTTPException(status_code=500, detail=result["message"])
+        return {
+            "status": "started",
+            "message": "Extended resume analysis started",
+            "session_id": session_id,
+            "progress_url": f"/api/progress/{session_id}"
+        }
             
     except Exception as e:
         print(f"❌ Extended analysis error for user {current_user.email}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Extended analysis failed: {str(e)}")
+
+@app.get("/api/progress/{session_id}")
+async def get_progress(
+    session_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get progress of an analysis session"""
+    progress = progress_tracker.get_progress(session_id)
+    if progress is None:
+        raise HTTPException(status_code=404, detail="Progress session not found")
+    
+    return progress
+
+@app.post("/api/documents/generate")
+async def generate_documents(
+    analysis_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Generate professional documents from analysis results"""
+    try:
+        # Get analysis results
+        analysis = await database.analysis_results.find_one({
+            "_id": analysis_id,
+            "user_id": current_user.id
+        })
+        
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        # Read all output files
+        results = {}
+        output_files = {
+            "job_analysis": "/app/output/job_analysis.json",
+            "resume_optimization": "/app/output/resume_optimization.json", 
+            "company_research": "/app/output/company_research.json",
+            "cover_letter": "/app/output/cover_letter.json",
+            "linkedin_optimization": "/app/output/linkedin_optimization.json",
+            "interview_preparation": "/app/output/interview_preparation.json",
+            "optimized_resume": "/app/output/optimized_resume.md",
+            "final_report": "/app/output/final_report.md"
+        }
+        
+        for key, file_path in output_files.items():
+            if os.path.exists(file_path):
+                try:
+                    with open(file_path, 'r') as f:
+                        content = f.read()
+                        if file_path.endswith('.json'):
+                            import json
+                            results[key] = json.loads(content)
+                        else:
+                            results[key] = content
+                except Exception as e:
+                    print(f"Error reading {file_path}: {e}")
+                    results[key] = None
+        
+        # Generate professional documents
+        generated_files = generate_all_documents(results, current_user.id)
+        
+        # Store document info in database
+        doc_record = {
+            "_id": str(uuid.uuid4()),
+            "user_id": current_user.id,
+            "analysis_id": analysis_id,
+            "generated_files": generated_files,
+            "created_at": datetime.utcnow(),
+            "expires_at": datetime.utcnow() + timedelta(hours=48)  # 48 hour expiry
+        }
+        
+        await database.generated_documents.insert_one(doc_record)
+        
+        return {
+            "status": "success",
+            "message": "Professional documents generated",
+            "document_id": doc_record["_id"],
+            "available_documents": list(generated_files.keys()),
+            "expires_at": doc_record["expires_at"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Document generation failed: {str(e)}")
+
+@app.get("/api/documents/download/{document_id}/{file_type}")
+async def download_document(
+    document_id: str,
+    file_type: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Download a generated document"""
+    try:
+        # Find document record
+        doc_record = await database.generated_documents.find_one({
+            "_id": document_id,
+            "user_id": current_user.id
+        })
+        
+        if not doc_record:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        # Check expiry
+        if doc_record["expires_at"] < datetime.utcnow():
+            raise HTTPException(status_code=410, detail="Document has expired")
+        
+        # Get file path
+        file_path = doc_record["generated_files"].get(file_type)
+        if not file_path or not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Return file
+        filename = Path(file_path).name
+        return FileResponse(
+            path=file_path,
+            filename=filename,
+            media_type='application/octet-stream'
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
+
+@app.get("/api/documents/list")
+async def list_user_documents(
+    current_user: User = Depends(get_current_user)
+):
+    """List all generated documents for a user"""
+    try:
+        # Find all non-expired documents for user
+        cursor = database.generated_documents.find({
+            "user_id": current_user.id,
+            "expires_at": {"$gt": datetime.utcnow()}
+        }).sort("created_at", -1)
+        
+        documents = []
+        async for doc in cursor:
+            documents.append({
+                "document_id": doc["_id"],
+                "analysis_id": doc["analysis_id"],
+                "available_files": list(doc["generated_files"].keys()),
+                "created_at": doc["created_at"],
+                "expires_at": doc["expires_at"]
+            })
+        
+        return {
+            "documents": documents,
+            "total_count": len(documents)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list documents: {str(e)}")
 
 @app.post("/api/agents/cover-letter")
 async def generate_cover_letter(
