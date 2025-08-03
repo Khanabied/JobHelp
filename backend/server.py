@@ -12,6 +12,10 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import tempfile
 import shutil
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Initialize FastAPI app
 app = FastAPI(title="Resume Optimization Platform", version="1.0.0")
