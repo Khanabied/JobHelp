@@ -7,7 +7,16 @@ import sys
 from pathlib import Path
 from crewai import Agent, Crew, Process, Task, LLM
 from crewai.project import CrewBase, agent, crew, task
-from crewai_tools import SerperDevTool, ScrapeWebsiteTool
+
+# Import available tools - let's check what's available
+try:
+    from crewai_tools import SerperDevTool, ScrapeWebsiteTool
+except ImportError:
+    # Fallback if tools are not available
+    print("⚠️ CrewAI tools not available, using basic agents")
+    SerperDevTool = None
+    ScrapeWebsiteTool = None
+
 from crewai.knowledge.source.pdf_knowledge_source import PDFKnowledgeSource
 
 # Add the src directory to Python path
