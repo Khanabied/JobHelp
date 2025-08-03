@@ -6,6 +6,7 @@ import './App.css';
 // Import components
 import AuthPage from './components/AuthPage';
 import Dashboard from './components/Dashboard';
+import AdminDashboard from './components/AdminDashboard';
 import LoadingSpinner from './components/LoadingSpinner';
 
 // API service
@@ -40,7 +41,7 @@ function App() {
       const response = await authService.login(email, password);
       localStorage.setItem('authToken', response.access_token);
       setUser(response.user);
-      toast.success('Login successful!');
+      toast.success('Welcome to JobSasa!');
       return true;
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Login failed');
@@ -53,7 +54,7 @@ function App() {
       const response = await authService.register(email, password, fullName);
       localStorage.setItem('authToken', response.access_token);
       setUser(response.user);
-      toast.success('Registration successful!');
+      toast.success('Welcome to JobSasa! Account created successfully!');
       return true;
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Registration failed');
@@ -67,24 +68,45 @@ function App() {
     toast.success('Logged out successfully');
   };
 
+  // Check if user is admin
+  const isAdmin = user && (user.email.endsWith('@admin.jobsasa.com') || user.email === 'admin@example.com');
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <LoadingSpinner />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-cyan-50">
+        <div className="text-center">
+          <LoadingSpinner />
+          <div className="mt-4">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-cyan-600 bg-clip-text text-transparent">
+              JobSasa
+            </h1>
+            <p className="text-gray-600 mt-2">Loading your career optimization platform...</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <Router>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50">
         <Toaster 
           position="top-right"
           toastOptions={{
             duration: 4000,
             style: {
-              background: '#363636',
+              background: '#1f2937',
               color: '#fff',
+            },
+            success: {
+              style: {
+                background: '#059669',
+              },
+            },
+            error: {
+              style: {
+                background: '#dc2626',
+              },
             },
           }}
         />
@@ -102,6 +124,13 @@ function App() {
             element={
               user ? <Dashboard user={user} onLogout={handleLogout} /> : 
               <Navigate to="/auth" />
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              isAdmin ? <AdminDashboard user={user} onLogout={handleLogout} /> : 
+              <Navigate to="/dashboard" />
             }
           />
           <Route
