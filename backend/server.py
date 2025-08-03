@@ -276,7 +276,7 @@ async def health_check():
         "status": "healthy",
         "message": "Resume Optimization Platform API is running",
         "services": {
-            "database": "connected" if database else "disconnected",
+            "database": "connected" if database is not None else "disconnected",
             "gemini": "configured" if os.getenv("GEMINI_API_KEY") else "not configured"
         }
     }
