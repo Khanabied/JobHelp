@@ -4,12 +4,14 @@ import tempfile
 import shutil
 from pathlib import Path
 import sys
+import json
 
 # Add the src directory to Python path to import CrewAI modules
 sys.path.append('/app/src')
 
 from resume_crew.crew import ResumeCrew
 from gemini_config import get_gemini_llm, test_gemini_connection
+from crewai import LLM
 
 class WebCrewIntegration:
     """Integration service for connecting web API to CrewAI system"""
