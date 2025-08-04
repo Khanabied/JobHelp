@@ -130,15 +130,32 @@ async def get_system_analytics() -> dict:
         # Total users
         total_users = await db_instance.database.users.count_documents({})
         
-        # Active users (logged in within last 30 days)
+        # Active users (logged in within last 30 days and today)
         from datetime import datetime, timedelta
-        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-        active_users = await db_instance.database.users.count_documents({
+        now = datetime.utcnow()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        thirty_days_ago = now - timedelta(days=30)
+        
+        active_users_today = await db_instance.database.users.count_documents({
+            "last_login": {"$gte": today_start}
+        })
+        
+        active_users_this_month = await db_instance.database.users.count_documents({
             "last_login": {"$gte": thirty_days_ago}
         })
         
         # Document statistics
         total_docs = await db_instance.database.documents.count_documents({})
+        
+        # Documents generated today and this month
+        docs_today = await db_instance.database.documents.count_documents({
+            "created_at": {"$gte": today_start}
+        })
+        
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        docs_this_month = await db_instance.database.documents.count_documents({
+            "created_at": {"$gte": month_start}
+        })
         
         # Documents by type
         pipeline = [
@@ -166,11 +183,14 @@ async def get_system_analytics() -> dict:
         
         return {
             "total_users": total_users,
-            "active_users_this_month": active_users,
+            "active_users_today": active_users_today,
+            "active_users_this_month": active_users_this_month,
+            "documents_generated_today": docs_today,
+            "documents_generated_this_month": docs_this_month,
             "total_documents": total_docs,
             "documents_by_type": docs_by_type,
             "subscription_distribution": subscription_dist,
-            "generated_at": datetime.utcnow()
+            "generated_at": now
         }
         
     except Exception as e:
