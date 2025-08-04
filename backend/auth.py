@@ -8,6 +8,9 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from models import User, UserRole
 import os
 
+# Import get_database function
+from database import get_database
+
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
