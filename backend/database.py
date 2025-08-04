@@ -1,8 +1,8 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 import os
 import logging
-from .models import User, UserRole
-from .auth import get_password_hash
+from models import User, UserRole
+from auth import get_password_hash
 
 logger = logging.getLogger(__name__)
 
