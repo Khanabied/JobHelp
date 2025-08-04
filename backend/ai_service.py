@@ -63,6 +63,13 @@ class GeminiAIService:
                                   job_description: str, resume_data: Dict[str, Any], 
                                   additional_notes: Optional[str] = None) -> Dict[str, Any]:
         """Generate personalized cover letter."""
+        if not self.model:
+            return {
+                "cover_letter": "AI service not available for cover letter generation",
+                "key_points": [],
+                "personalization_score": 0
+            }
+        
         try:
             prompt = self._create_cover_letter_prompt(
                 job_title, company_name, job_description, resume_data, additional_notes
