@@ -30,6 +30,14 @@ class GeminiAIService:
     
     async def optimize_resume(self, resume_data: Dict[str, Any], job_description: Optional[str] = None) -> Dict[str, Any]:
         """Optimize resume based on job description and best practices."""
+        if not self.model:
+            return {
+                "optimized_content": "AI service not available",
+                "suggestions": ["AI optimization service is currently unavailable"],
+                "score": 0,
+                "keywords_added": []
+            }
+        
         try:
             prompt = self._create_resume_optimization_prompt(resume_data, job_description)
             
