@@ -524,12 +524,17 @@ class CareerToolsAPITester:
             
             if response.status_code == 200:
                 data = response.json()
-                if "total_users" in data and "total_documents" in data:
+                required_fields = ["total_users", "active_users_today", "active_users_this_month", 
+                                 "documents_generated_today", "documents_generated_this_month", 
+                                 "documents_by_type", "subscription_distribution"]
+                
+                if all(field in data for field in required_fields):
                     self.log_test("Admin System Analytics", "PASS", 
-                                f"Total users: {data['total_users']}, Total docs: {data['total_documents']}")
+                                f"Total users: {data['total_users']}, Total docs today: {data['documents_generated_today']}")
                     return True
                 else:
-                    self.log_test("Admin System Analytics", "FAIL", f"Invalid response: {data}")
+                    missing_fields = [field for field in required_fields if field not in data]
+                    self.log_test("Admin System Analytics", "FAIL", f"Missing fields: {missing_fields}")
                     return False
             else:
                 error_detail = response.json().get("detail", "Unknown error") if response.content else "No response"
