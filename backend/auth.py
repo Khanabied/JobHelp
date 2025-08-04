@@ -67,7 +67,7 @@ async def authenticate_user(db: AsyncIOMotorDatabase, email: str, password: str)
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncIOMotorDatabase = Depends()
+    db: AsyncIOMotorDatabase = Depends(get_database)
 ) -> User:
     """Get current authenticated user."""
     credentials_exception = HTTPException(
