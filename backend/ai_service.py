@@ -3,6 +3,12 @@ from typing import List, Dict, Any, Optional
 import os
 import json
 import logging
+from dotenv import load_dotenv
+from pathlib import Path
+
+# Load environment variables
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / '.env')
 
 logger = logging.getLogger(__name__)
 
@@ -10,10 +16,17 @@ class GeminiAIService:
     def __init__(self):
         self.api_key = os.getenv("GEMINI_API_KEY")
         if not self.api_key:
-            raise ValueError("GEMINI_API_KEY not found in environment variables")
+            logger.warning("GEMINI_API_KEY not found in environment variables - AI features will be disabled")
+            self.model = None
+            return
         
-        genai.configure(api_key=self.api_key)
-        self.model = genai.GenerativeModel('gemini-pro')
+        try:
+            genai.configure(api_key=self.api_key)
+            self.model = genai.GenerativeModel('gemini-pro')
+            logger.info("Gemini AI service initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize Gemini AI: {str(e)}")
+            self.model = None
     
     async def optimize_resume(self, resume_data: Dict[str, Any], job_description: Optional[str] = None) -> Dict[str, Any]:
         """Optimize resume based on job description and best practices."""
