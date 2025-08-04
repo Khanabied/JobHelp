@@ -680,7 +680,7 @@ class CareerToolsAPITester:
 def main():
     """Main function to run the tests"""
     # Get backend URL from environment or use default
-    backend_url = "https://7d3d370a-4457-4647-999d-7934a4805891.preview.emergentagent.com/api"
+    backend_url = "https://7d3d370a-4457-4647-999d-7934a4805891.preview.emergentagent.com"
     
     print(f"Starting comprehensive backend API testing...")
     print(f"Backend URL: {backend_url}")
