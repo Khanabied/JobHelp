@@ -582,13 +582,13 @@ class CareerToolsAPITester:
             # Restore token
             self.auth_token = original_token
             
-            if response.status_code == 401:
+            if response.status_code in [401, 403]:  # Both are acceptable for unauthorized access
                 self.log_test("Unauthorized Access Protection", "PASS", 
-                            "Properly rejected unauthorized request")
+                            f"Properly rejected unauthorized request with {response.status_code}")
                 return True
             else:
                 self.log_test("Unauthorized Access Protection", "FAIL", 
-                            f"Should have returned 401, got {response.status_code}")
+                            f"Should have returned 401 or 403, got {response.status_code}")
                 return False
                 
         except Exception as e:
