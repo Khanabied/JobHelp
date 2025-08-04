@@ -23,8 +23,8 @@ class CareerToolsAPITester:
         
         # Test data
         self.test_user_data = {
-            "email": "sarah.johnson@example.com",
-            "full_name": "Sarah Johnson",
+            "email": f"testuser_{int(time.time())}@example.com",
+            "full_name": "Test User",
             "password": "SecurePass123!"
         }
         
