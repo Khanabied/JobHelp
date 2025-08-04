@@ -63,6 +63,10 @@ async def create_indexes():
 async def create_admin_user():
     """Create default admin user if it doesn't exist."""
     try:
+        # Import locally to avoid circular import
+        from passlib.context import CryptContext
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        
         admin_email = os.getenv("ADMIN_EMAIL", "admin@example.com")
         
         # Check if admin user already exists
@@ -76,7 +80,7 @@ async def create_admin_user():
         admin_user = User(
             email=admin_email,
             full_name="System Administrator",
-            hashed_password=get_password_hash(admin_password),
+            hashed_password=pwd_context.hash(admin_password),
             role=UserRole.ADMIN,
             subscription_tier="enterprise"
         )
