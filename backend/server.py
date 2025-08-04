@@ -10,11 +10,11 @@ from typing import List, Optional
 import io
 
 # Import custom modules
-from .models import *
-from .auth import *
-from .ai_service import ai_service
-from .document_service import document_generator
-from .database import get_database, connect_to_mongo, close_mongo_connection, get_user_analytics, get_system_analytics
+from models import *
+from auth import *
+from ai_service import ai_service
+from document_service import document_generator
+from database import get_database, connect_to_mongo, close_mongo_connection, get_user_analytics, get_system_analytics
 
 # Load environment variables
 from dotenv import load_dotenv
