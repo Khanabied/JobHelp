@@ -124,7 +124,7 @@ const FileUpload = ({ onFileUpload }) => {
             
             {isDragActive ? (
               <div>
-                <p className="text-lg font-medium text-primary-600">
+                <p className="text-lg font-medium text-indigo-600">
                   {isDragReject ? 'Please upload a PDF file' : 'Drop your resume here'}
                 </p>
               </div>
@@ -134,7 +134,7 @@ const FileUpload = ({ onFileUpload }) => {
                   Drag and drop your resume here
                 </p>
                 <p className="text-gray-500 mb-4">or</p>
-                <button className="btn-primary px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                <button className="btn-primary px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
                   Choose File
                 </button>
               </div>
