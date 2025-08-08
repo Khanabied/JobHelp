@@ -111,7 +111,7 @@ const FileUpload = ({ onFileUpload }) => {
           <div className="space-y-4">
             <div className="mx-auto w-16 h-16 flex items-center justify-center">
               <div className="w-8 h-8 animate-spin">
-                <div className="h-full w-full border-4 border-gray-200 border-t-primary-600 rounded-full"></div>
+                <div className="h-full w-full border-4 border-gray-200 border-t-indigo-600 rounded-full"></div>
               </div>
             </div>
             <p className="text-gray-600">Uploading your resume...</p>
