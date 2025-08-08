@@ -118,8 +118,8 @@ const FileUpload = ({ onFileUpload }) => {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="mx-auto w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center">
-              <Upload className="upload-icon text-primary-600" />
+            <div className="mx-auto w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center">
+              <Upload className="upload-icon text-indigo-600" />
             </div>
             
             {isDragActive ? (
