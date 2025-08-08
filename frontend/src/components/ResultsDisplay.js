@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Download, FileText, MessageSquare, Linkedin, HelpCircle,
   Star, TrendingUp, Target, Award, Eye, RefreshCw,
-  CheckCircle, Briefcase, Building2, Calendar
+  CheckCircle, Briefcase, Building2, Calendar, AlertCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { apiService } from '../services/api';
