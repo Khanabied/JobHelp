@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, Users, FileText, Download, TrendingUp, 
   Activity, Settings, LogOut, RefreshCw, Calendar,
-  UserCheck, FileAnalytics, Target, Zap
+  UserCheck, Target, Zap
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import LoadingSpinner from './LoadingSpinner';
