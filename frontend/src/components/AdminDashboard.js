@@ -105,7 +105,7 @@ const AdminDashboard = ({ user, onLogout }) => {
           <MetricCard
             title="Total Analyses"
             value={analysis_metrics.total_analyses}
-            icon={FileAnalytics}
+            icon={FileText}
             color="purple"
           />
           <MetricCard
